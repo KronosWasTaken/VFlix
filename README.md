@@ -177,8 +177,8 @@ pnpm --version
 #### Step 3: Clone and Setup Project
 ```bash
 # Clone the repository
-git clone https://github.com/KronosWasTaken/vflix
-cd vflix
+git clone https://github.com/KronosWasTaken/VFlix.git
+cd VFlix
 
 # Install dependencies
 pnpm install
