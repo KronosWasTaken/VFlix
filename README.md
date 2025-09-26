@@ -5,11 +5,11 @@
   
   **A sophisticated, full-stack streaming platform built with cutting-edge technologies**
   
-  [![Live Demo](https://img.shields.io/badge/Live%20Demo-vflix-mocha.vercel.app-00D4AA?style=for-the-badge&logo=vercel)](https://vflix-mocha.vercel.app)
-  [![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-  [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-  [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
+  [![Live Demo](https://img.shields.io/badge/Live%20Demo-VFlix-00D4AA?style=for-the-badge&logo=vercel)](https://vflix-mocha.vercel.app)
+  [![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+  [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 </div>
 
 ---
@@ -159,8 +159,8 @@ vflix-streaming-platform/
 2. Download the LTS version (recommended)
 3. Run the installer and follow the setup wizard
 4. Verify installation:
-
-```bash
+    
+    ```bash
    node --version
    npm --version
 ```
@@ -175,7 +175,7 @@ pnpm --version
 ```
     
 #### Step 3: Clone and Setup Project
-```bash
+    ```bash
 # Clone the repository
 git clone https://github.com/KronosWasTaken/VFlix.git
 cd VFlix
@@ -190,7 +190,7 @@ pnpm install
 echo. > .env
 
 # Add your API keys to .env
-VITE_TMDB_API_KEY=your_tmdb_api_key_here
+    VITE_TMDB_API_KEY=your_tmdb_api_key_here
 VITE_SUPABASE_URL=your_supabase_project_url_here
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
@@ -202,7 +202,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 4. Run the script to create required tables
 
 #### Step 6: Start Development Server
-```bash
+    ```bash
 # Start the development server
 pnpm dev
 
