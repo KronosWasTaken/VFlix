@@ -159,23 +159,22 @@ vflix-streaming-platform/
 2. Download the LTS version (recommended)
 3. Run the installer and follow the setup wizard
 4. Verify installation:
-    
-    ```bash
+   ```bash
    node --version
    npm --version
-```
+   ```
 
 #### Step 2: Install pnpm
 ```bash
 # Install pnpm globally
 npm install -g pnpm
-    
+
 # Verify installation
 pnpm --version
 ```
-    
+
 #### Step 3: Clone and Setup Project
-    ```bash
+```bash
 # Clone the repository
 git clone https://github.com/KronosWasTaken/VFlix.git
 cd VFlix
@@ -190,7 +189,7 @@ pnpm install
 echo. > .env
 
 # Add your API keys to .env
-    VITE_TMDB_API_KEY=your_tmdb_api_key_here
+VITE_TMDB_API_KEY=your_tmdb_api_key_here
 VITE_SUPABASE_URL=your_supabase_project_url_here
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
@@ -202,7 +201,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 4. Run the script to create required tables
 
 #### Step 6: Start Development Server
-    ```bash
+```bash
 # Start the development server
 pnpm dev
 
