@@ -338,6 +338,81 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_key
 ```
 
+## 📱 Android APK Generation
+
+<details>
+<summary><strong>🔧 How to Build Android APK</strong></summary>
+
+### Prerequisites
+- **Node.js** (v18 or higher)
+- **pnpm** package manager
+- **Android Studio** (for development)
+- **Java Development Kit (JDK)** 11 or higher
+
+### Step 1: Install Dependencies
+```bash
+# Install Capacitor and Android platform
+pnpm add @capacitor/core @capacitor/cli @capacitor/android
+
+# Initialize Capacitor (if not already done)
+npx cap init
+```
+
+### Step 2: Add Android Platform
+```bash
+# Add Android platform to your project
+npx cap add android
+```
+
+### Step 3: Build Web App
+```bash
+# Build your VFlix web app for production
+pnpm build
+```
+
+### Step 4: Sync Assets
+```bash
+# Sync web assets to Android platform
+npx cap sync android
+```
+
+### Step 5: Build APK
+```bash
+# Navigate to android directory
+cd android
+
+# Build debug APK
+./gradlew assembleDebug
+
+# Or build release APK (requires signing)
+./gradlew assembleRelease
+```
+
+### Step 6: Find Your APK
+The APK will be located at:
+```
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Alternative: Using Android Studio
+1. **Open Android Studio**
+2. **File → Open** → Select `android` folder
+3. **Build → Build Bundle(s) / APK(s) → Build APK(s)**
+4. **Wait for build to complete**
+
+### Troubleshooting
+- **Gradle sync issues**: Clean project and rebuild
+- **SDK not found**: Install Android SDK through Android Studio
+- **Java version**: Ensure JDK 11+ is installed
+- **Build errors**: Check Android Studio for detailed error messages
+
+### APK Distribution
+- **Debug APK**: For testing (larger file size, includes debug info)
+- **Release APK**: For distribution (smaller, optimized, requires signing)
+- **File size**: ~4-10MB depending on assets and build type
+
+</details>
+
 ## 🤝 Contributing    
 
 This is an educational project, but contributions are welcome! Please:

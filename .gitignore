@@ -126,3 +126,35 @@ temp/
 .svelte-kit
 
 # End of https://www.gitignore.io/api/node
+
+# Android/Capacitor specific
+android/app/build/
+android/build/
+android/.gradle/
+android/captured_assets/
+android/app/src/main/assets/public/
+android/local.properties
+android/gradle.properties.local
+android/keystore.properties
+android/app/release/
+
+# Capacitor
+.capacitor/
+
+# APK files
+*.apk
+*.aab
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.gradle/
+local.properties
+
+# Keep public directory for assets
+!public/
+!public/favicon.svg
+!public/robots.txt
+!public/sitemap.xml
