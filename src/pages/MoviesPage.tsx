@@ -88,7 +88,7 @@ const MoviesPage: React.FC = () => {
         <meta property="og:title" content="Movies - VFlix Streaming" />
         <meta property="og:description" content="Browse popular, trending, and top-rated movies. Discover new films and manage your watchlist on VFlix." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://vflix.vercel.app/movies" />
+        <meta property="og:url" content="https://vflix-mocha.vercel.app/movies" />
         <meta property="og:image" content="/favicon.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Movies - VFlix Streaming" />

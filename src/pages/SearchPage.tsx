@@ -77,7 +77,7 @@ const SearchPage: React.FC = () => {
         <meta property="og:title" content="Search - VFlix Streaming" />
         <meta property="og:description" content="Search for movies, TV shows, and people. Find your favorite content quickly on VFlix." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://vflix.vercel.app/search" />
+        <meta property="og:url" content="https://vflix-mocha.vercel.app/search" />
         <meta property="og:image" content="/favicon.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Search - VFlix Streaming" />

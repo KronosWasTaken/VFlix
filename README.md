@@ -5,7 +5,7 @@
   
   **A sophisticated, full-stack streaming platform built with cutting-edge technologies**
   
-  [![Live Demo](https://img.shields.io/badge/Live%20Demo-vflix.vercel.app-00D4AA?style=for-the-badge&logo=vercel)](https://vflix.vercel.app)
+  [![Live Demo](https://img.shields.io/badge/Live%20Demo-vflix-mocha.vercel.app-00D4AA?style=for-the-badge&logo=vercel)](https://vflix-mocha.vercel.app)
   [![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
   [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
@@ -41,7 +41,7 @@
 
 ## 🚀 Live Demo
 
-**Experience VFlix**: [https://vflix.vercel.app](https://vflix.vercel.app)
+**Experience VFlix**: [https://vflix-mocha.vercel.app](https://vflix-mocha.vercel.app)
 
 ## 🛠️ Technology Stack
 

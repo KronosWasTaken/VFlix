@@ -15,7 +15,7 @@ const TermsPage: React.FC = () => {
         <meta property="og:title" content="Terms of Service - VFlix Streaming" />
         <meta property="og:description" content="Read the terms of service for VFlix. Understand the rules and guidelines for using this site." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://vflix.vercel.app/terms" />
+        <meta property="og:url" content="https://vflix-mocha.vercel.app/terms" />
         <meta property="og:image" content="/favicon.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Terms of Service - VFlix Streaming" />

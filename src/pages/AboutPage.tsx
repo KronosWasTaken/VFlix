@@ -22,7 +22,7 @@ const AboutPage: React.FC = () => {
           content="Learn more about VFlix, our mission, data sources, and commitment to providing a modern streaming experience."
         />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://vflix.vercel.app/about" />
+        <meta property="og:url" content="https://vflix-mocha.vercel.app/about" />
         <meta property="og:image" content="/favicon.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="About VFlix - Streaming Platform" />

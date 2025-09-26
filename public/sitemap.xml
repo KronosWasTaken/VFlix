@@ -1,33 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://vflix.vercel.app/</loc>
+    <loc>https://vflix-mocha.vercel.app/</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/movies</loc>
+    <loc>https://vflix-mocha.vercel.app/movies</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/tv</loc>
+    <loc>https://vflix-mocha.vercel.app/tv</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/genres</loc>
+    <loc>https://vflix-mocha.vercel.app/genres</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/watchlist</loc>
+    <loc>https://vflix-mocha.vercel.app/watchlist</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/search</loc>
+    <loc>https://vflix-mocha.vercel.app/search</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/about</loc>
+    <loc>https://vflix-mocha.vercel.app/about</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/contact</loc>
+    <loc>https://vflix-mocha.vercel.app/contact</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/privacy</loc>
+    <loc>https://vflix-mocha.vercel.app/privacy</loc>
   </url>
   <url>
-    <loc>https://vflix.vercel.app/terms</loc>
+    <loc>https://vflix-mocha.vercel.app/terms</loc>
   </url>
 </urlset> 

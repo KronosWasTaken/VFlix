@@ -15,7 +15,7 @@ const PrivacyPage: React.FC = () => {
         <meta property="og:title" content="Privacy Policy - VFlix Streaming" />
         <meta property="og:description" content="Read the privacy policy for VFlix. Learn how your data is handled and protected." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://vflix.vercel.app/privacy" />
+        <meta property="og:url" content="https://vflix-mocha.vercel.app/privacy" />
         <meta property="og:image" content="/favicon.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Privacy Policy - VFlix Streaming" />

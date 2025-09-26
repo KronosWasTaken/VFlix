@@ -17,7 +17,7 @@ const ContactPage: React.FC = () => {
         <meta property="og:title" content="Contact - VFlix Streaming" />
         <meta property="og:description" content="Contact the VFlix team for questions, suggestions, or feedback. Get in touch with us here." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://vflix.vercel.app/contact" />
+        <meta property="og:url" content="https://vflix-mocha.vercel.app/contact" />
         <meta property="og:image" content="/favicon.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Contact - VFlix Streaming" />
