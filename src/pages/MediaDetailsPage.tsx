@@ -1,0 +1,1113 @@
+import React, { useEffect, useState } from "react";
+import {
+  useParams,
+  useNavigate,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
+import { api, getBackdropUrl, getPosterUrl } from "@/lib/api";
+import {
+  Movie,
+  TVShow,
+  Season,
+  Episode,
+  ContinueWatchingItem,
+} from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Heart,
+  Play,
+  Star,
+  Server,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Clock,
+} from "lucide-react";
+import VideoPlayer from "@/components/VideoPlayer";
+import { cn } from "@/lib/utils";
+import { useWatchlist } from "@/contexts/WatchlistContext";
+import RatingModal from "@/components/RatingModal";
+import { useToast } from "@/hooks/use-toast";
+
+interface MediaDetailsPageProps {}
+
+const MediaDetailsPage: React.FC<MediaDetailsPageProps> = () => {
+  const { mediaType, id } = useParams<{ mediaType: string; id: string }>();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const continueWatchingData = location.state?.continueWatchingData as
+    | ContinueWatchingItem
+    | undefined;
+  const [media, setMedia] = useState<Movie | TVShow | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<Season | null>(null);
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isWatching, setIsWatching] = useState(location.state?.play || false);
+  const {
+    isInWatchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    updateContinueWatching,
+    watchlist,
+    updateRating,
+  } = useWatchlist();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [selectedServer, setSelectedServer] = useState<string>(
+    () => localStorage.getItem("selectedServer") || "vidfast"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("selectedServer", selectedServer);
+  }, [selectedServer]);
+  const [selectedAnimeDub] = useState<boolean>(false);
+  const [pingTimes, setPingTimes] = useState<Record<string, number | null>>({});
+  const [optimalServer, setOptimalServer] = useState<string | null>(null);
+  const [rankedServers, setRankedServers] = useState<string[]>([]);
+
+  const servers = [
+    { id: "vidrock", name: "Vidrock", url: "https://vidrock.net", streamUrl: "https://vidrock.net" },
+    { id: "vidfast", name: "VidFast", url: "https://vidfast.pro", streamUrl: "https://vidfast.pro" },
+    { id: "videasy", name: "Videasy", url: "https://www.videasy.net", streamUrl: "https://player.videasy.net" },
+    { id: "vidsrc", name: "VidSrc", url: "https://vidsrc.xyz", streamUrl: "https://vidsrc.xyz/embed" },
+  ];
+
+  useEffect(() => {
+    const pingServer = async (url: string) => {
+      const startTime = Date.now();
+      try {
+        await fetch(url, { method: "HEAD", mode: "no-cors" });
+        const endTime = Date.now();
+        return endTime - startTime;
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const updatePings = async () => {
+      const newPingTimes: Record<string, number | null> = {};
+      for (const server of servers) {
+        const time = await pingServer(server.url);
+        newPingTimes[server.id] = time;
+      }
+      setPingTimes(newPingTimes);
+
+      // Find the optimal server
+      const validPings = Object.entries(newPingTimes).filter(([, time]) => time !== null) as [string, number][];
+      if (validPings.length > 0) {
+        const bestServer = validPings.reduce((best, current) => {
+          return current[1] < best[1] ? current : best;
+        });
+        setOptimalServer(bestServer[0]);
+
+        // Rank servers by ping time
+        const sortedServers = validPings.sort((a, b) => a[1] - b[1]);
+        setRankedServers(sortedServers.map((s) => s[0]));
+      }
+    };
+
+    updatePings();
+    const interval = setInterval(updatePings, 10000); // Ping every n seconds
+
+    return () => clearInterval(interval); 
+  }, []);
+
+  const inWatchlist = media ? isInWatchlist(media.id) : false;
+  const watchlistItem = media ? watchlist.find(item => item.id === media.id) : null;
+  
+  // Rating modal state
+  const [ratingModal, setRatingModal] = useState<{
+    isOpen: boolean;
+    mediaId: number;
+    title: string;
+    currentRating: number;
+  }>({
+    isOpen: false,
+    mediaId: 0,
+    title: "",
+    currentRating: 0,
+  });
+
+  useEffect(() => {
+    if (location.state?.play) {
+      handleWatchNow();
+    }
+  }, [location.state?.play]);
+
+  useEffect(() => {
+    const fetchMediaDetails = async () => {
+      if (!mediaType || !id) return;
+
+      try {
+        setIsLoading(true);
+
+        if (mediaType === "movie") {
+          const movieData = await api.getMovieDetails(id);
+          setMedia({ ...movieData, media_type: "movie" });
+        } else if (mediaType === "tv") {
+          const tvData = await api.getTvDetails(id);
+          setMedia({ ...tvData, media_type: "tv" });
+
+          // If TV show has seasons, select the appropriate one
+          if (tvData.seasons && tvData.seasons.length > 0) {
+            let targetSeason: Season | undefined;
+
+            // First check URL parameters for season
+            const urlSeason = searchParams.get("season");
+            const urlEpisode = searchParams.get("episode");
+
+            // If we have URL parameters, use those
+            if (urlSeason) {
+              targetSeason = tvData.seasons.find(
+                (s: Season) => s.season_number === parseInt(urlSeason)
+              );
+            }
+
+            // If we have continue watching data, use that season
+            if (!targetSeason && continueWatchingData?.season) {
+              targetSeason = tvData.seasons.find(
+                (s: Season) => s.season_number === continueWatchingData.season
+              );
+            }
+
+            // If no continue watching data or season not found, use first real season
+            if (!targetSeason) {
+              targetSeason =
+                tvData.seasons.find((s: Season) => s.season_number > 0) ||
+                tvData.seasons[0];
+            }
+
+            if (targetSeason) {
+              setSelectedSeason(targetSeason);
+
+              // Fetch episodes for the selected season
+              const seasonData = await api.getTvSeasonDetails(
+                id,
+                targetSeason.season_number
+              );
+              setEpisodes(seasonData.episodes || []);
+
+              // Set the appropriate episode
+              if (seasonData.episodes && seasonData.episodes.length > 0) {
+                let targetEpisode: Episode | undefined;
+
+                // If we have URL parameters, use those
+                if (
+                  urlEpisode &&
+                  urlSeason === targetSeason.season_number.toString()
+                ) {
+                  targetEpisode = seasonData.episodes.find(
+                    (e: { episode_number: number }) =>
+                      e.episode_number === parseInt(urlEpisode)
+                  );
+                }
+
+                // If we have continue watching data, use that episode
+                if (!targetEpisode && continueWatchingData?.episode) {
+                  targetEpisode = seasonData.episodes.find(
+                    (e: { episode_number: number }) =>
+                      e.episode_number === continueWatchingData.episode
+                  );
+                }
+
+                // If no continue watching data or episode not found, use first episode
+                if (targetEpisode) {
+                  setSelectedEpisode(targetEpisode);
+                } else {
+                  setSelectedEpisode(seasonData.episodes[0]);
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMediaDetails();
+  }, [mediaType, id, continueWatchingData]);
+
+  useEffect(() => {
+    // Reset episode selection when season changes
+    if (selectedSeason && mediaType === "tv") {
+      const fetchSeasonDetails = async () => {
+        try {
+          const seasonData = await api.getTvSeasonDetails(
+            id!,
+            selectedSeason.season_number
+          );
+          setEpisodes(seasonData.episodes || []);
+
+          // First check URL parameters for episode
+          const urlEpisode = searchParams.get("episode");
+          const urlSeason = searchParams.get("season");
+
+          // If we have URL parameters and they match the current season, use the episode from URL
+          if (
+            urlEpisode &&
+            urlSeason === selectedSeason.season_number.toString()
+          ) {
+            const targetEpisode = seasonData.episodes?.find(
+              (e: { episode_number: number }) =>
+                e.episode_number === parseInt(urlEpisode)
+            );
+            if (targetEpisode) {
+              setSelectedEpisode(targetEpisode);
+              return;
+            }
+          }
+
+          // If this is the continue watching season, try to find the target episode
+          if (
+            continueWatchingData?.season === selectedSeason.season_number &&
+            continueWatchingData?.episode
+          ) {
+            const targetEpisode = seasonData.episodes?.find(
+              (e: { episode_number: number }) =>
+                e.episode_number === continueWatchingData.episode
+            );
+            if (targetEpisode) {
+              setSelectedEpisode(targetEpisode);
+              return;
+            }
+          }
+
+          // Otherwise, set first episode as selected
+          if (seasonData.episodes && seasonData.episodes.length > 0) {
+            setSelectedEpisode(seasonData.episodes[0]);
+          } else {
+            setSelectedEpisode(null);
+          }
+        } catch (error) {
+        }
+      };
+
+      fetchSeasonDetails();
+    }
+  }, [selectedSeason, id, mediaType, continueWatchingData]);
+
+  
+
+  const handleSeasonChange = (seasonNumber: string) => {
+    if (!media || mediaType !== "tv") return;
+
+    const tvShow = media as TVShow;
+    const season = tvShow.seasons?.find(
+      (s) => s.season_number === parseInt(seasonNumber)
+    );
+    if (season) {
+      setSelectedSeason(season);
+      // Update URL parameters
+      setSearchParams({ season: seasonNumber });
+    }
+  };
+
+
+  const handleNextEpisode = () => {
+    if (!selectedEpisode) return;
+    const currentIndex = episodes.findIndex((e) => e.id === selectedEpisode.id);
+    if (currentIndex < episodes.length - 1) {
+      const nextEpisode = episodes[currentIndex + 1];
+      setSelectedEpisode(nextEpisode);
+      const currentSeason = selectedSeason?.season_number.toString() || "1";
+      setSearchParams({
+        season: currentSeason,
+        episode: nextEpisode.episode_number.toString(),
+      });
+    }
+  };
+
+  const handlePreviousEpisode = () => {
+    if (!selectedEpisode) return;
+    const currentIndex = episodes.findIndex((e) => e.id === selectedEpisode.id);
+    if (currentIndex > 0) {
+      const prevEpisode = episodes[currentIndex - 1];
+      setSelectedEpisode(prevEpisode);
+      const currentSeason = selectedSeason?.season_number.toString() || "1";
+      setSearchParams({
+        season: currentSeason,
+        episode: prevEpisode.episode_number.toString(),
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isWatching && media && mediaType === 'tv' && selectedEpisode) {
+      const title = "title" in media ? media.title : media.name;
+      updateContinueWatching({
+        id: media.id,
+        title: title || "Untitled",
+        poster_path: media.poster_path,
+        media_type: mediaType as "tv",
+        progress: 0,
+        last_watched: Date.now(),
+        added_at: Date.now(),
+        season: selectedSeason?.season_number,
+        episode: selectedEpisode?.episode_number,
+        watched: false,
+        watch_later: false,
+      });
+    }
+  }, [selectedEpisode, isWatching, media, mediaType, updateContinueWatching, selectedSeason]);
+
+  const handleWatchNow = () => {
+    if (!isWatching) {
+      setIsWatching(true);
+    }
+
+    // Add to continue watching
+    if (media) {
+      const title = "title" in media ? media.title : media.name;
+      updateContinueWatching({
+        id: media.id,
+        title: title || "Untitled",
+        poster_path: media.poster_path,
+        media_type: mediaType as "movie" | "tv",
+        progress: 0,
+        last_watched: Date.now(),
+        added_at: Date.now(),
+        season: selectedSeason?.season_number,
+        episode: selectedEpisode?.episode_number,
+        watched: false,
+        watch_later: false,
+      });
+    }
+
+    // Scroll to player
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleAddToWatched = async () => {
+    if (!media) return;
+
+    const title = "title" in media ? media.title : media.name;
+
+    try {
+      // If item is already in watchlist (watch later), update it to watched
+      if (inWatchlist && watchlistItem) {
+        // Use the existing watchlist item and update it
+        await addToWatchlist({
+          id: media.id,
+          title: title || "Unknown Title",
+          poster_path: media.poster_path,
+          media_type: mediaType as "movie" | "tv",
+          added_at: watchlistItem.added_at, // Keep original added date
+          watched: true,
+          watch_later: false,
+        });
+        
+        toast({
+          title: "Marked as Watched",
+          description: `"${title}" has been moved from Watch Later to Watched.`,
+        });
+      } else {
+        // Add new item to watchlist as watched
+        await addToWatchlist({
+          id: media.id,
+          title: title || "Unknown Title",
+          poster_path: media.poster_path,
+          media_type: mediaType as "movie" | "tv",
+          added_at: Date.now(),
+          watched: true,
+          watch_later: false,
+        });
+        
+        toast({
+          title: "Added to Watched",
+          description: `"${title}" has been added to your watched list.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to mark as watched. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddToWatchLater = async () => {
+    if (!media) return;
+
+    const title = "title" in media ? media.title : media.name;
+
+    try {
+      await addToWatchlist({
+        id: media.id,
+        title: title || "Unknown Title",
+        poster_path: media.poster_path,
+        media_type: mediaType as "movie" | "tv",
+        added_at: Date.now(),
+        watched: false,
+        watch_later: true,
+      });
+      
+      toast({
+        title: "Added to Watch Later",
+        description: `"${title}" has been added to your watch later list.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add to watch later. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRatingClick = () => {
+    if (!media) return;
+    
+    // Only allow rating if item is in watchlist (watched or watch later)
+    if (!inWatchlist) {
+      return;
+    }
+
+    const title = "title" in media ? media.title : media.name;
+    setRatingModal({
+      isOpen: true,
+      mediaId: media.id,
+      title: title || "Unknown Title",
+      currentRating: watchlistItem?.rating || 0,
+    });
+  };
+
+  const handleRatingSubmit = async (rating: number) => {
+    try {
+      await updateRating(ratingModal.mediaId, rating);
+    } catch (error) {
+      console.error('Error updating rating:', error);
+    }
+  };
+
+  const handleRatingModalClose = () => {
+    setRatingModal({
+      isOpen: false,
+      mediaId: 0,
+      title: "",
+      currentRating: 0,
+    });
+  };
+
+  const getStreamingUrl = () => {
+    if (!media || !mediaType) return "";
+
+    const server = servers.find((s) => s.id === selectedServer);
+    const baseUrl = server ? server.streamUrl : servers[0].streamUrl; // Default to first server
+
+    if (selectedServer === "vidsrc") {
+      if (mediaType === "movie") {
+        return `${baseUrl}/movie?tmdb=${id}`;
+      }
+      return `${baseUrl}/tv?tmdb=${id}&season=${selectedSeason?.season_number || 1}&episode=${selectedEpisode?.episode_number || 1}`;
+    }
+
+    if (selectedServer === "videasy") {
+      // Videasy logic
+      if (mediaType === "movie") {
+        // Movie: https://player.videasy.net/movie/movie_id
+        return `${baseUrl}/movie/${id}`;
+      } else if (mediaType === "tv") {
+        // TV: https://player.videasy.net/tv/show_id/season/episode
+        return `${baseUrl}/tv/${id}/${selectedSeason?.season_number || 1}/${
+          selectedEpisode?.episode_number || 1
+        }`;
+      } else if (mediaType === "anime") {
+        // Anime: https://player.videasy.net/anime/anilist_id/episode?dub=true|false
+        // or for movies: https://player.videasy.net/anime/anilist_id?dub=true|false
+        if (selectedEpisode) {
+          // Show episode
+          return `${baseUrl}/anime/${id}/${selectedEpisode.episode_number}${
+            selectedAnimeDub ? "?dub=true" : ""
+          }`;
+        } else {
+          // Movie
+          return `${baseUrl}/anime/${id}${selectedAnimeDub ? "?dub=true" : ""}`;
+        }
+      }
+      return "";
+    }
+
+    // Logic for other servers
+    if (mediaType === "movie") {
+      return `${baseUrl}/movie/${id}`;
+    } else {
+      return `${baseUrl}/tv/${id}/${selectedSeason?.season_number || 1}/${
+        selectedEpisode?.episode_number || 1
+      }`;
+    }
+  };
+
+  const getMediaTitle = () => {
+    if (!media) return "";
+    return "title" in media ? media.title : media.name;
+  };
+
+  const getMediaReleaseYear = () => {
+    if (!media) return "";
+
+    const dateString =
+      "release_date" in media ? media.release_date : media.first_air_date;
+
+    return dateString ? dateString.substring(0, 4) : "";
+  };
+
+  if (isLoading && !media) {
+    return (
+      <div className="container pt-24 pb-12">
+        <div className="space-y-8">
+          <Skeleton className="w-full h-[50vh] rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Skeleton className="h-80 md:col-span-1" />
+            <div className="space-y-4 md:col-span-2">
+              <Skeleton className="h-12 w-3/4" />
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-24 w-full" />
+              <div className="flex space-x-4">
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!media) {
+    return (
+      <div className="container pt-24 pb-12 text-center">
+        <h1 className="text-2xl font-bold">Media not found</h1>
+        <p className="mt-4">The requested media could not be found.</p>
+        <Button className="mt-6" onClick={() => navigate("/")}>
+          Back to Home
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-12">
+      {/* Video Player (when watching) */}
+      {isWatching && (
+        <div className="container px-4 sm:px-6 md:px-8 pt-20 mb-8">
+          <VideoPlayer
+            src={getStreamingUrl()}
+            title={getMediaTitle() || "Untitled"}
+          />
+          {/* Mobile-only episode navigation */}
+          {mediaType === "tv" && selectedEpisode && (
+            <div className="md:hidden flex gap-4 mt-4">
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={handlePreviousEpisode}
+                disabled={
+                  episodes.findIndex((e) => e.id === selectedEpisode.id) === 0
+                }
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Prev
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={handleNextEpisode}
+                disabled={
+                  episodes.findIndex((e) => e.id === selectedEpisode.id) ===
+                  episodes.length - 1
+                }
+              >
+                Next
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hero Backdrop */}
+      {!isWatching && (
+        <div
+          className="w-full h-[30vh] md:h-[40vh] relative z-0"
+          style={{
+            backgroundImage: media.backdrop_path
+              ? `url(${getBackdropUrl(media.backdrop_path, "w1280")})`
+              : "none",
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/60 to-background" />
+        </div>
+      )}
+
+      {/* Content */}
+      <div
+        className={cn(
+          "container px-4 sm:px-6 md:px-8 relative z-10",
+          !isWatching && "-mt-16 md:-mt-24 pt-8"
+        )}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Poster and Actions */}
+          <div className="md:col-span-1 max-w-xs w-full mx-auto flex justify-center md:block">
+            <div className="sticky top-24">
+              <Card className="overflow-hidden border-0 shadow-lg rounded-lg">
+                {media.poster_path ? (
+                  <img
+                    src={
+                      (getPosterUrl(media.poster_path, "w500") as string) || ""
+                    }
+                    alt={getMediaTitle()}
+                    className="w-full h-auto"
+                  />
+                ) : (
+                  <div className="aspect-[2/3] bg-muted flex items-center justify-center">
+                    <span className="text-muted-foreground">
+                      No Poster Available
+                    </span>
+                  </div>
+                )}
+              </Card>
+
+              <div className="mt-6 space-y-4">
+                <Button size="lg" className="w-full" onClick={handleWatchNow}>
+                  <Play className="mr-2 h-5 w-5" />
+                  Watch Now
+                </Button>
+
+                {inWatchlist ? (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 border-primary text-primary"
+                      onClick={() => removeFromWatchlist(media.id)}
+                    >
+                      <Heart className="mr-2 h-5 w-5 fill-primary" />
+                      Remove
+                    </Button>
+                    {watchlistItem?.watch_later && !watchlistItem?.watched && (
+                      <Button
+                        size="lg"
+                        className="flex-1"
+                        onClick={handleAddToWatched}
+                      >
+                        <Check className="mr-2 h-5 w-5" />
+                        Mark as Watched
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      size="lg"
+                      className="flex-1"
+                      onClick={handleAddToWatched}
+                    >
+                      <Check className="mr-2 h-5 w-5" />
+                      Mark as Watched
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleAddToWatchLater}
+                    >
+                      <Clock className="mr-2 h-5 w-5" />
+                      Watch Later
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Rating Button - Only show if item is in watchlist */}
+              {inWatchlist && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleRatingClick}
+                    disabled={!inWatchlist}
+                  >
+                    <Star className="mr-2 h-5 w-5" />
+                    {watchlistItem?.rating ? `Rated ${watchlistItem.rating}/5` : "Rate this item"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="md:col-span-2">
+            <h1 className="text-3xl md:text-4xl font-bold">
+              {getMediaTitle()}
+            </h1>
+
+            <div className="flex flex-wrap items-center mt-3 space-x-4 text-muted-foreground">
+              {getMediaReleaseYear() && <span>{getMediaReleaseYear()}</span>}
+
+              {media.vote_average > 0 && (
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" />
+                  <span>{media.vote_average.toFixed(1)}/10</span>
+                </div>
+              )}
+
+              {"runtime" in media && media.runtime && (
+                <span>
+                  {Math.floor(media.runtime / 60)}h {media.runtime % 60}m
+                </span>
+              )}
+
+              {"number_of_seasons" in media && media.number_of_seasons && (
+                <span>
+                  {media.number_of_seasons} Season
+                  {media.number_of_seasons !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {/* Genres */}
+            {media.genres && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {media.genres.map((genre) => (
+                  <span
+                    key={genre.id}
+                    className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full"
+                  >
+                    {genre.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Overview */}
+            <div className="mt-6">
+              <h2 className="text-lg font-medium mb-2">Overview</h2>
+              <p className="text-muted-foreground">{media.overview}</p>
+            </div>
+
+            {/* Server Selection */}
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Server className="h-5 w-5 text-primary" />
+                  <h3 className="font-medium">Streaming Server</h3>
+                </div>
+                <Select
+                  value={selectedServer}
+                  onValueChange={setSelectedServer}
+                >
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Select Server" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {servers.map((server) => (
+                      <SelectItem key={server.id} value={server.id}>
+                        <div className="flex items-center">
+                          <span
+                            className={cn(
+                              "h-2 w-2 rounded-full mr-2",
+                              (() => {
+                                const rank = rankedServers.indexOf(server.id);
+                                if (rank === -1) return "bg-gray-400";
+                                const colors = [
+                                  "bg-green-500",
+                                  "bg-yellow-500",
+                                  "bg-orange-500",
+                                  "bg-red-500",
+                                ];
+                                return colors[rank] || "bg-red-500";
+                              })()
+                            )}
+                          ></span>
+                          <span>{server.name}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {pingTimes[server.id] === null
+                              ? "(Pinging...)"
+                              : `(${pingTimes[server.id]}ms)`}
+                          </span>
+                          {server.id === optimalServer && (
+                            <span className="text-xs text-primary ml-1">
+                              (optimal)
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* TV Show specific controls */}
+            {mediaType === "tv" &&
+              "seasons" in media &&
+              media.seasons &&
+              media.seasons.length > 0 && (
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium">Episodes</h2>
+                    <Select
+                      value={selectedSeason?.season_number.toString()}
+                      onValueChange={handleSeasonChange}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select Season" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {media.seasons
+                          .filter((s: Season) => s.season_number > 0) // Skip specials (season 0)
+                          .map((season: Season) => (
+                            <SelectItem
+                              key={season.id}
+                              value={season.season_number.toString()}
+                            >
+                              {season.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Selected episode details */}
+                  {selectedEpisode && (
+                    <Card className="p-4 mb-4 relative">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        {selectedEpisode.still_path && (
+                          <img
+                            src={
+                              getPosterUrl(
+                                selectedEpisode.still_path,
+                                "w500"
+                              ) || ""
+                            }
+                            alt={selectedEpisode.name || "Episode thumbnail"}
+                            className="rounded-md w-full sm:w-64 h-auto object-cover"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="text-xl font-medium">
+                            {selectedEpisode.episode_number}.{" "}
+                            {selectedEpisode.name}
+                          </h3>
+                          {selectedEpisode.air_date && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Air date:{" "}
+                              {new Date(
+                                selectedEpisode.air_date
+                              ).toLocaleDateString()}
+                            </p>
+                          )}
+                          <p className="text-muted-foreground mt-2">
+                            {selectedEpisode.overview ||
+                              "No description available."}
+                          </p>
+                          <Button
+                            size="lg"
+                            className="mt-4 w-full"
+                            onClick={handleWatchNow}
+                          >
+                            <Play className="mr-2 h-5 w-5" />
+                            Play Episode
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={handlePreviousEpisode}
+                          disabled={episodes.findIndex(e => e.id === selectedEpisode.id) === 0}
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={handleNextEpisode}
+                          disabled={episodes.findIndex(e => e.id === selectedEpisode.id) === episodes.length - 1}
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Netflix-style episode list */}
+                  <div className="relative">
+                    <div className="flex overflow-x-auto pb-4 gap-4 snap-x snap-mandatory scrollbar-hide">
+                      {episodes.map((episode) => (
+                        <div
+                          key={episode.id}
+                          className={cn(
+                            "flex-none w-[300px] snap-start cursor-pointer transition-all duration-200",
+                            selectedEpisode?.id === episode.id &&
+                              "bg-primary/30 text-primary"
+                          )}
+                          onClick={() => {
+                            setSelectedEpisode(episode);
+                            // Update URL parameters
+                            const currentSeason =
+                              selectedSeason?.season_number.toString() || "1";
+                            setSearchParams({
+                              season: currentSeason,
+                              episode: episode.episode_number.toString(),
+                            });
+                          }}
+                        >
+                          <div className="relative aspect-video rounded-lg overflow-hidden">
+                            {episode.still_path ? (
+                              <img
+                                src={
+                                  getPosterUrl(episode.still_path, "w500") || ""
+                                }
+                                alt={episode.name || "Episode thumbnail"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <span className="text-muted-foreground">
+                                  No Image Available
+                                </span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                            <div className="absolute bottom-0 left-0 right-0 p-4">
+                              <h3 className="text-white font-medium">
+                                {episode.episode_number}.{" "}
+                                {episode.name || "Untitled Episode"}
+                              </h3>
+                              {episode.air_date && (
+                                <p className="text-sm text-white/80 mt-1">
+                                  {new Date(
+                                    episode.air_date
+                                  ).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                            {episode.overview || "No description available."}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Credits and videos tabs */}
+            <div className="mt-8">
+              <Tabs defaultValue="cast">
+                <TabsList>
+                  <TabsTrigger value="cast">Cast</TabsTrigger>
+                  <TabsTrigger value="videos">Videos</TabsTrigger>
+                </TabsList>
+                <TabsContent value="cast" className="mt-4">
+                  {media.credits?.cast && media.credits.cast.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {media.credits.cast.slice(0, 8).map((person) => (
+                        <Card
+                          key={person.id}
+                          className="overflow-hidden border-0"
+                        >
+                          <div className="aspect-[2/3] bg-muted">
+                            {person.profile_path ? (
+                              <img
+                                src={
+                                  getPosterUrl(person.profile_path, "w185") ||
+                                  undefined
+                                }
+                                alt={person.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground">
+                                  No Image
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2">
+                            <h4 className="font-medium text-sm line-clamp-1">
+                              {person.name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {person.character}
+                            </p>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No cast information available.
+                    </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="videos" className="mt-4">
+                  {media.videos?.results && media.videos.results.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {media.videos.results
+                        .filter((video) => video.site === "YouTube")
+                        .slice(0, 4)
+                        .map((video) => (
+                          <div key={video.id} className="aspect-video">
+                            <iframe
+                              width="100%"
+                              height="100%"
+                              src={`https://www.youtube.com/embed/${video.key}`}
+                              title={video.name}
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            ></iframe>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No videos available.
+                    </p>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <RatingModal
+        isOpen={ratingModal.isOpen}
+        onClose={handleRatingModalClose}
+        title={ratingModal.title}
+        currentRating={ratingModal.currentRating}
+        onRatingSubmit={handleRatingSubmit}
+      />
+    </div>
+  );
+};
+
+export default MediaDetailsPage;
